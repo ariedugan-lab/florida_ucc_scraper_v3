@@ -6,8 +6,8 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-HTTP_PROXY = os.getenv("HTTP_PROXY")
-HTTPS_PROXY = os.getenv("HTTPS_PROXY")
+HTTP_PROXY = os.getenv("OXY_HTTP_PROXY")
+HTTPS_PROXY = os.getenv("OXY_HTTPS_PROXY")
 
 PROXIES = {
     "http": HTTP_PROXY,
@@ -121,7 +121,7 @@ def search_ucc_fl(query: str) -> list[dict]:
         "Connection": "keep-alive",
     }
 
-    resp = requests.get(API_URL, params=params, headers=headers, proxies=PROXIES, timeout=15)
+    resp = requests.get(API_URL, params=params, headers=headers, timeout=15)
     resp.raise_for_status()
 
     data = resp.json()

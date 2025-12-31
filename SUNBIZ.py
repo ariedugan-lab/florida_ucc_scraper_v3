@@ -25,11 +25,11 @@ def fetch_sunbiz_results(entity_name: str, page: int = 1) -> list[dict]:
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=True,
-            proxy={
-                "server": PROXY_SERVER,
-                "username": PROXY_USER,
-                "password": PROXY_PASS,
-            },
+            #proxy={
+                #"server": PROXY_SERVER,
+                #"username": PROXY_USER,
+                #"password": PROXY_PASS,
+            #},
         )
 
         page_obj = browser.new_page()

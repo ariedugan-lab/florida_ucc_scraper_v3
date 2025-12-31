@@ -2,12 +2,14 @@ from UCC import find_ucc_matches
 from SUNBIZ import resolve_sunbiz_entities
 from dotenv import load_dotenv
 from supabase import create_client, Client
+import time
 import os
 
 # -- configs
 load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", "100"))
 AUTO_THRESHOLD = 90
 LIKELY_THRESHOLD = 75
 REVIEW_THRESHOLD = 70
@@ -21,7 +23,7 @@ companies = (
     .select("id, name, city")
     .eq("state", "FL")
     .is_("state_portal_fetch", None)
-    .limit(500)
+    .limit(BATCH_SIZE)
     .execute()
 )
 
@@ -34,7 +36,7 @@ for row in rows:
     company_name = row["name"]
 
     print(f"[+] Resolving Sunbiz for: {company_name}")
-
+    time.sleep(5)  # to avoid rate limiting
     response = resolve_sunbiz_entities(company_name)
     results = response["results"]
 
