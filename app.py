@@ -41,18 +41,22 @@ for row in rows:
     results = response["results"]
 
     # build flat sunbiz payload (ALL results)
-    if results:
-        sunbiz_payload = [
-            {
-                "entity_name": r["name"],
-                "filing_number": r["filing_number"],
-                "status": r["status"],
-                "score": r["final_score"],
-                "detail_url": r["detail_url"],
-            }
-            for r in results
-        ]
-    else:
+    try:
+        if results:
+            sunbiz_payload = [
+                {
+                    "entity_name": r["name"],
+                    "filing_number": r["filing_number"],
+                    "status": r["status"],
+                    "score": r["final_score"],
+                    "detail_url": r["detail_url"],
+                }
+                for r in results
+            ]
+        else:
+            sunbiz_payload = []
+    except Exception as e:
+        print(f"[!] Error building sunbiz payload: {e}")
         sunbiz_payload = []
 
     # update company row

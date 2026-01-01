@@ -11,9 +11,21 @@ PROXY_SERVER = os.getenv("PROXY_SERVER")
 PROXY_USER = os.getenv("PROXY_USER")
 PROXY_PASS = os.getenv("PROXY_PASS")
 
+def sanitize_query(name: str) -> str:
+    """
+    Remove characters that break Sunbiz URLs.
+    Keeps letters, numbers, spaces.
+    """
+    name = name.upper()
+    name = re.sub(r"[^\w\s]", " ", name)  # remove ?, &, /, etc
+    name = re.sub(r"\s+", " ", name).strip()
+    return name
+
 
 def fetch_sunbiz_results(entity_name: str, page: int = 1) -> list[dict]:
-    encoded_name = quote(entity_name)
+    clean_name = sanitize_query(entity_name)
+    encoded_name = quote(clean_name)
+
 
     url = (
         "https://search.sunbiz.org/Inquiry/CorporationSearch/"
