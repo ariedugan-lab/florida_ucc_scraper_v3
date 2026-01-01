@@ -5,6 +5,9 @@ from supabase import create_client, Client
 import time
 import os
 
+time_started = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+print(f"[*] Starting FL Company State Portal Resolver {time_started}")
+
 # -- configs
 load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
