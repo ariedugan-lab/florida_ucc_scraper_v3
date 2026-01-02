@@ -4,17 +4,19 @@ from rapidfuzz import fuzz
 import re
 import os
 from dotenv import load_dotenv
+import time
 
 load_dotenv()
-HTTP_PROXY = os.getenv("OXY_HTTP_PROXY")
-HTTPS_PROXY = os.getenv("OXY_HTTPS_PROXY")
+HTTP_PROXY = os.getenv("PP_HTTP_PROXY")
+HTTPS_PROXY = os.getenv("PP_HTTPS_PROXY")
 
 PROXIES = {
     "http": HTTP_PROXY,
-    "https": HTTPS_PROXY,
+#    "https": HTTPS_PROXY,
 }
 
 API_URL = "https://publicsearchapi.floridaucc.com/search"
+API_URL_DETAILS = "https://publicsearchapi.floridaucc.com/filing-details?"
 
 LEGAL_SUFFIXES = {
     "llc", "l.l.c", "inc", "incorporated", "corp", "corporation",
@@ -107,11 +109,11 @@ def search_ucc_fl(query: str) -> list[dict]:
         raise ValueError("query is required")
 
     params = {
-        "rowNumber": "",
-        "text": quote_plus(query),
+        "rowNumber": "",  # start at first page
+        "text": query,  # requests will URL encode this
         "searchOptionType": "OrganizationDebtorName",
-        "searchOptionSubOption": "FiledCompactDebtorNameList",
-        "searchCategory": "Standard",
+        "searchOptionSubOption": "FiledAndLapsedCompactDebtorNameList",
+        "searchCategory": "Exact",  # this matches the example you shared
     }
 
     headers = {
@@ -166,3 +168,101 @@ def find_ucc_matches(query_name: str, query_city: str | None = None) -> list[dic
 
     scored.sort(key=lambda x: x["score"], reverse=True)
     return scored
+
+def search_ucc_fl_document(filing_number):
+    if not filing_number:
+        raise ValueError("Filing number is required")
+
+    params = {
+        "searchOptionType": "DocumentNumber",
+        "filingNumber": filing_number,
+    }
+
+
+    headers = {
+        "User-Agent": "PostmanRuntime/7.51.0",
+        "Accept": "*/*",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+    }
+
+    resp = requests.get(API_URL_DETAILS, proxies=PROXIES, params=params, headers=headers, timeout=15)
+    resp.raise_for_status()
+
+    data = resp.json()
+
+    return data
+
+def search_ucc_fl_all(query: str, sleep: float = 0.5) -> list[dict]:
+    if not query:
+        raise ValueError("query is required")
+
+    headers = {
+        "User-Agent": "PostmanRuntime/7.51.0",
+        "Accept": "*/*",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+    }
+
+    all_results = []
+    seen_rows = set()
+
+    next_row = ""  # initial cursor
+
+    while True:
+        params = {
+            "rowNumber": next_row,
+            "text": query,
+            "searchOptionType": "OrganizationDebtorName",
+            "searchOptionSubOption": "FiledAndLapsedCompactDebtorNameList",
+            "searchCategory": "Exact",
+        }
+
+        resp = requests.get(API_URL, params=params, proxies=PROXIES, headers=headers, timeout=15)
+        resp.raise_for_status()
+
+        data = resp.json()
+        payload = data.get("payload", {})
+        debtors = payload.get("debtors", [])
+
+        if not debtors:
+            break  # no more results
+
+        for d in debtors:
+            row_num = d.get("rowNumber")
+
+            # safety dedupe
+            if row_num in seen_rows:
+                continue
+
+            seen_rows.add(row_num)
+
+            all_results.append({
+                "rowNumber": row_num,
+                "debtor_name": d.get("name"),
+                "ucc_number": d.get("uccNumber"),
+                "address": d.get("address"),
+                "city": d.get("city"),
+                "state": d.get("state"),
+                "zip": d.get("zipCode"),
+                "status": d.get("status"),
+            })
+
+        new_next_row = payload.get("nextRowNumber")
+
+        # stop conditions
+        if not new_next_row:
+            break
+
+        if new_next_row == next_row:
+            break  # cursor stalled (extra safety)
+
+        next_row = new_next_row
+
+        time.sleep(5)  # be polite / avoid throttling
+
+    return all_results
+
+if __name__ == "__main__":
+    a=search_ucc_fl_document("970000141878")
+    print(a)
